@@ -97,7 +97,7 @@ class VHost():
                 enable = subprocess.popen(['a2ensite', self.file],
                                           stdout=subprocess.PIPE,
                                           )
-                output, err = enable.communicate())
+                output, err = enable.communicate()
                 print output
                 print err
 
