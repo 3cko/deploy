@@ -22,7 +22,7 @@ class VHost():
 
         self.vhosts = {'httpd': 'https://raw.github.com/3cko/deploy/master/conf/httpd.conf',
                     'apache2': 'https://raw.github.com/3cko/deploy/master/conf/httpd.conf',}
-        self.paths = {'httpd': './test',
+        self.paths = {'httpd': '/etc/httpd/vhost.d',
                     'apache2': '/etc/apache2/sites-available',}
 
     def detectWebService(self):
@@ -66,7 +66,8 @@ class VHost():
             print line,
 
     def updateVhostWithDocRoot(self):
-        self.validateDir(self.document_root)
+        path = "{0}/{1}".format(self.document_root, self.domain)
+        self.validateDir(path)
         self.updateTemplate(self.file, '/path/to/doc/root', self.document_root)
 
     def updateVhostWithDomain(self):
@@ -92,9 +93,9 @@ class VHost():
             # create document root for domain
             self.updateVhostWithDocRoot()
 
-            if self.service is 'apache2':
+            if self.service == 'apache2':
                 import subprocess
-                enable = subprocess.popen(['a2ensite', self.file],
+                enable = subprocess.Popen(['a2ensite', self.file],
                                           stdout=subprocess.PIPE,
                                           )
                 output, err = enable.communicate()
