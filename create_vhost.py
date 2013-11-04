@@ -11,7 +11,6 @@ import os
 import errno
 import pwd
 import sys
-#import argparse
 
 
 class VHost():
@@ -40,11 +39,10 @@ class VHost():
                 raise
 
     def checkUser(self):
-        user = pwd.getpwuid(os.getuid()).pw_name
-        user = 'root'
+        user = os.geteuid()
         print user
         print type(user)
-        if user is not 'root':
+        if user != 0:
             print "You must be logged in as root or use sudo to run me"
             sys.exit(0)
         else:
@@ -93,6 +91,16 @@ class VHost():
 
             # create document root for domain
             self.updateVhostWithDocRoot()
+
+            if self.service is 'apache2':
+                import subprocess
+                enable = subprocess.popen(['a2ensite', self.file],
+                                          stdout=subprocess.PIPE,
+                                          )
+                output, err = enable.communicate())
+                print output
+                print err
+
             
 
 if __name__ == '__main__':
@@ -104,9 +112,9 @@ if __name__ == '__main__':
                       metavar="DOMAIN",
                       )
     group.add_option('-s', '--service',
-                      help="Web service the virtualhost is for: httpd, apach2, nginx",
+                      help="Web service the virtualhost is for: httpd, apach2",
                       type='choice',
-                      choices=['httpd', 'apache2', 'nginx'],
+                      choices=['httpd', 'apache2'],
                       metavar='WEB SERVICE',
                       )
     parser.add_option('--docroot',
