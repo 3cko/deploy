@@ -59,7 +59,7 @@ class VHost():
                         self.file)
 
     def updateTemplate(self, file, find, replace):
-        with fileinput.FileInput(file, inplace=1) as line:
+        for line in fileinput.FileInput(file, inplace=1):
             line = line.replace(find, replace)
             print line,
 
@@ -94,7 +94,7 @@ class VHost():
             if self.service == 'apache2':
                 import subprocess
                 enable = subprocess.Popen(['a2ensite', 
-                                           '{0}.conf'.format(self.domain)
+                                           '{0}'.format(self.domain)
                                            ],
                                           stdout=subprocess.PIPE,
                                           )
