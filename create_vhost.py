@@ -135,8 +135,8 @@ class VHost():
                                           stdout=subprocess.PIPE,
                                           )
                 output, err = enable.communicate()
-            elif self.service == 'httpd':
-                self.appendVhostDirForHttpd()
+            #elif self.service == 'httpd':
+            #    self.appendVhostDirForHttpd()
             
 
 if __name__ == '__main__':
