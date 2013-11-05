@@ -95,7 +95,7 @@ class VHost():
         enable 'Include vhost.d/*.conf' to httpd.conf
         """
         with open('/etc/httpd/conf/httpd.conf', 'a') as vhost:
-            vhost.write('Include vhost.d*.conf')
+            vhost.write('Include vhost.d/*.conf')
             vhost.close()
 
     def run(self):
