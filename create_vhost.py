@@ -95,6 +95,10 @@ class VHost():
 
             if self.service == 'apache2':
                 import subprocess
+                disable = subprocess.Popen(['a2dissite', self.file],
+                                          stdout=subprocess.PIPE,
+                                          )
+                d, e = disable.communicate()
                 enable = subprocess.Popen(['a2ensite', self.file],
                                           stdout=subprocess.PIPE,
                                           )
