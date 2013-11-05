@@ -94,7 +94,7 @@ class VHost():
             if self.service == 'apache2':
                 import subprocess
                 enable = subprocess.Popen(['a2ensite', 
-                                           '{0}'.format(self.domain)
+                                           '{0}.conf'.format(self.domain)
                                            ],
                                           stdout=subprocess.PIPE,
                                           )
