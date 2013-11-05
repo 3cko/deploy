@@ -74,6 +74,9 @@ class VHost():
     def updateVhostWithGzip(self):
         self.updateTemplate(self.file, '##GZIP##', '')
 
+    def updateVhostWithService(self):
+        self.updateTemplate(self.file, '<service>', self.service)
+
     def run(self):
         """
         create a vhost
@@ -90,6 +93,9 @@ class VHost():
 
             # create document root for domain
             self.updateVhostWithDocRoot()
+
+            # replace service for log paths
+            self.updateVhostWithService()
 
             if self.service == 'apache2':
                 import subprocess
