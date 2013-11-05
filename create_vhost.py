@@ -25,13 +25,10 @@ class VHost():
         self.paths = {'httpd': '/etc/httpd/vhost.d',
                     'apache2': '/etc/apache2/sites-available',}
 
-    def detectWebService(self):
-        """
-        Check for apache2, httpd, nginx
-        """
-        pass
-
     def validateDir(self, path):
+        """
+        ensure specified path exists, if not, create it
+        """
         try:
             os.makedirs(path)
         except OSError as exception:
@@ -39,6 +36,9 @@ class VHost():
                 raise
 
     def checkUser(self):
+        """
+        check to make sure its ran as root
+        """
         user = os.geteuid()
         if user != 0:
             print "You must be logged in as root or use sudo to run me"
@@ -50,8 +50,6 @@ class VHost():
         """
         download appropriate vhost conf from git
         """
-
-        print self.file
         self.file = "{0}/{1}.conf".format(self.paths[self.service], self.domain)
         # get vhost template from github
         vhost_file = urllib.urlretrieve(
@@ -59,23 +57,46 @@ class VHost():
                         self.file)
 
     def updateTemplate(self, file, find, replace):
+        """
+        update file with the find/replace
+        """
         for line in fileinput.FileInput(file, inplace=1):
             line = line.replace(find, replace)
             print line,
 
     def updateVhostWithDocRoot(self):
+        """
+        update domains doc root and create if doesnt exist 
+        """
         path = "{0}/{1}".format(self.document_root, self.domain)
         self.validateDir(path)
         self.updateTemplate(self.file, '/path/to/doc/root', self.document_root)
 
     def updateVhostWithDomain(self):
+        """
+        update example.com with specified domain name
+        """
         self.updateTemplate(self.file, 'example.com', self.domain)
 
     def updateVhostWithGzip(self):
+        """
+        enable gzip compression with mod_deflate
+        """
         self.updateTemplate(self.file, '##GZIP##', '')
 
     def updateVhostWithService(self):
+        """
+        update <service> with servers web service for log files
+        """
         self.updateTemplate(self.file, '<service>', self.service)
+
+    def appendVhostDirForHttpd(self):
+        """
+        enable 'Include vhost.d/*.conf' to httpd.conf
+        """
+        with open('/etc/httpd/conf/httpd.conf', 'a') as vhost:
+            vhost.write('Include vhost.d*.conf')
+            vhost.close()
 
     def run(self):
         """
@@ -105,9 +126,8 @@ class VHost():
                                           stdout=subprocess.PIPE,
                                           )
                 output, err = enable.communicate()
-                print output
-                print err
-
+            elif self.service == 'httpd':
+                self.appendVhostDirForHttpd()
             
 
 if __name__ == '__main__':
@@ -146,13 +166,3 @@ if __name__ == '__main__':
     vhost.run()
     if options.gzip:
         vhost.updateVhostWithGzip()
-
-# ensure root or sudo user
-# take arguments
-# check if directory of vhosts exists
-# create if not
-# download vhost file
-# find/replace example.com with domain name
-# create document root
-# add to sites-enabled if nginx/apache2
-# restart service.
