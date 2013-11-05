@@ -84,6 +84,12 @@ class VHost():
         """
         self.updateTemplate(self.file, '##GZIP##', '')
 
+    def updateVhostWithSsl(self):
+        """
+        enable ssl 
+        """
+        self.updateTemplate(self.file, '##SSL##', '')
+
     def updateVhostWithService(self):
         """
         update <service> with servers web service for log files
@@ -169,3 +175,5 @@ if __name__ == '__main__':
     vhost.run()
     if options.gzip:
         vhost.updateVhostWithGzip()
+    if options.ssl:
+        vhost.updateVhostWithSsl()
