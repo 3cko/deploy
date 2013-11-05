@@ -162,6 +162,10 @@ if __name__ == '__main__':
                       help="Enable GZIP compression in the virtualhost",
                       action='store_true',
                       )
+    parser.add_option('--ssl',
+                      help="Enable SSL support in the virtualhost",
+                      action='store_true',
+                      )
                       
     parser.add_option_group(group)
     options, args = parser.parse_args()
