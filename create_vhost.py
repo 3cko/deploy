@@ -40,8 +40,6 @@ class VHost():
 
     def checkUser(self):
         user = os.geteuid()
-        print user
-        print type(user)
         if user != 0:
             print "You must be logged in as root or use sudo to run me"
             sys.exit(0)
@@ -61,7 +59,7 @@ class VHost():
                         self.file)
 
     def updateTemplate(self, file, find, replace):
-        for line in fileinput.FileInput(file, inplace=1):
+        with fileinput.FileInput(file, inplace=1) as line:
             line = line.replace(find, replace)
             print line,
 
@@ -95,11 +93,9 @@ class VHost():
 
             if self.service == 'apache2':
                 import subprocess
-                disable = subprocess.Popen(['a2dissite', self.file],
-                                          stdout=subprocess.PIPE,
-                                          )
-                d, e = disable.communicate()
-                enable = subprocess.Popen(['a2ensite', self.file],
+                enable = subprocess.Popen(['a2ensite', 
+                                           '{0}.conf'.format(self.domain)
+                                           ],
                                           stdout=subprocess.PIPE,
                                           )
                 output, err = enable.communicate()
