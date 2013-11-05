@@ -106,6 +106,9 @@ class VHost():
             # ensure service path exists for vhosts
             self.validateDir(self.paths[self.service])
             
+            if self.service == 'httpd':
+                self.validateDir('/etc/httpd/vhost.d')
+            
             # get vhost file and update paths
             self.getVirtualHost()
             
