@@ -8,6 +8,8 @@ import os
 import errno
 import shutil
 import sys
+import time
+
 
 class FTP():
     def __init__(self, username, domain, web_root, passwd=None, home=None):
@@ -265,8 +267,9 @@ Match Group sftponly
         if not self.checkMatchGroup():
             self.disableDefaultSubsystem()
             self.appendMatchGroup()
-        self.setDirPerms()
+        time.sleep(1)
         self.createChrootDir()
+        self.setDirPerms()
         if not self.checkFstab():
             self.appendFstab()
         if not self.checkPam():
