@@ -261,6 +261,9 @@ Match Group sftponly
             self.appendUmask()
         self.restartSshd()
         self.mountFstab()
+        print "Ensure domains doc root is root:apache and set to 775"
+        print "Create a password for {0} with `passwd {0}`".format(self.username)
+        print "If there are any problems, email me at john.martin@rackspace.com"
 
 
 if __name__ == '__main__':
