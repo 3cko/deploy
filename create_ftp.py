@@ -4,12 +4,17 @@
 import re
 import subprocess
 import fileinput
-
+import os
+import errno
+import shutil
 
 class FTP():
-    def __init__(self, name):
-        self.name = name
-        self.group = None
+    def __init__(self, username, domain, web_root, passwd=None, home=None):
+        self.username = username
+        self.domain = domain
+        self.web_root = web_root
+        self.passwd = passwd
+        self.home = home
         self.array = []
 
     def scanFile(self, file, string, array=None):
@@ -17,12 +22,13 @@ class FTP():
         open specific file and find exact matches of $string, returns boolean
         """
         self.array = []
+        regex = re.compile('\\b'+string+'\\b')
         with open(file, 'r') as lines:
             for line in lines:
-                match = re.findall('\\b'+string+'\\b', line)
+                match = regex.findall(line)
                 if len(match) > 0:
                     if array:
-                        self.array.append(match[0])
+                        self.array.append(line)
                     return True
         return False
 
@@ -37,11 +43,33 @@ class FTP():
                               )
         output, error = add.communicate()
 
+    def appendToFile(self, file, append):
+        """
+        appends Match Group sftponly fields to /etc/ssh/sshd_config
+        """
+        with open(file, 'a') as insert:
+            insert.write(append)
+            insert.close()
+
+    def mkBackup(self, file_name):
+        """
+        make backup of file before editing
+        """
+        shutil.copyfile(file_name, "{0}.sftp.bak".format(file_name))
+
+    def getHomeDir(self):
+        """
+        Gets users home dir if user is already created
+        """
+        self.checkUser()
+        self.home = self.array[0].split(':')[5]
+
     def checkUser(self):
         """
         returns boolean if user exists
         """
-        return self.scanFile('/etc/passwd', self.name)
+        match = "\A{0}".format(self.username)
+        return self.scanFile('/etc/passwd', match, array=1)
 
     def checkGroup(self):
         """
@@ -53,8 +81,36 @@ class FTP():
         """
         returns boolean if sftponly match group has been created
         """
-        self.scanFile('/etc/ssh/sshd_config.test',
+        self.scanFile('/etc/ssh/sshd_config',
                       "Subsystem\s+sftp\s+internal-sftp", array=1)
+        if len(self.array) > 0:
+            return True
+        return False
+
+    def checkFstab(self):
+        """
+        check to see if the bindmount is already added in fstab
+        BROKEN
+        """
+        bind = "{0}\s+{1}/{2}\s+none\s+bind\s+0\s+0".format(
+                           self.web_root,
+                           self.home,
+                           self.domain,
+                           )
+        self.scanFile('/etc/fstab',
+                       bind,
+                       array=1)
+        if len(self.array) > 0:
+            return True
+        return False
+
+    def checkPam(self):
+        """
+        returns boolean if umask is set for pam.d
+        """
+        self.mkBackup('/etc/pam.d/sshd')
+        self.scanFile('/etc/pam.d/sshd',
+                      "session\s+optional\s+pam_umask.so\s+umask=0002", array=1)
         if len(self.array) > 0:
             return True
         return False
@@ -69,39 +125,118 @@ class FTP():
         """
         creates ftp user
         """
-        self.addField("useradd -G sftponly -s /bin/false {0}".format(self.name))
+        if not self.home:
+            useradd = "useradd -g apache -G sftponly -s /bin/false {0}".format(
+                    self.username)
+        else:
+            useradd = "useradd -g apache -G sftponly -d {0} -s /bin/false {1}".format(
+                    self.home,
+                    self.username)
+        self.addField(useradd)
+        self.createPasswd()
+        self.getHomeDir()
+
+    def createPasswd(self):
+        """
+        Set passwd for user
+        BROKEN
+        """
+        passwd = 'echo "{0}" | passwd {1} --stdin'.format(
+                                self.passwd,
+                                self.username)
+        self.addField(passwd)
+
+    def createChrootDir(self):
+        """
+        create domains dir in users home dir
+        """
+        chroot = "{0}/{1}".format(
+                self.home,
+                self.domain)
+        try:
+            os.makedirs(chroot)
+        except OSError as exception:
+            if exception.errno != errno.EEXIST:
+                raise exception
+
+    def setDirPerms(self):
+        """
+        set home dir to root: and 755
+        """
+        self.addField("chown root: {0}".format(self.home))
+        self.addField("chmod 755 {0}".format(self.home))
 
     def addGroupToUser(self):
         """
         adds user to group, sftponly
         """
-        self.addField("usermod -G sftponly {0}".format(self.name))
+        self.addField("usermod -g apache -G sftponly {0}".format(self.username))
 
     def disableDefaultSubsystem(self):
         """
         disables default Subsystem in /etc/ssh/sshd_config
         """
-        self.scanFile('/etc/ssh/sshd_config.test',
+        self.mkBackup('/etc/ssh/sshd_config')
+        self.scanFile('/etc/ssh/sshd_config',
                       "Subsystem\s+sftp\s+/usr/libexec/openssh/sftp-server", array=1)
         find = self.array[0]
-        for line in fileinput.FileInput('/etc/ssh/sshd_config.test', inplace=1):
+        for line in fileinput.FileInput('/etc/ssh/sshd_config', inplace=1):
             line = line.replace(find, "#{0}".format(find))
             print line,
 
     def appendMatchGroup(self):
         """
-        appends Match Group sftponly fields to /etc/ssh/sshd_config
+        appends sftp chrooting info to /etc/ssh/sshd_config 
         """
+        self.mkBackup('/etc/ssh/sshd_config')
         subsystem = """
 Subsystem   sftp    internal-sftp
+
+UsePAM yes
+
 Match Group sftponly
     ChrootDirectory %h
     ForceCommand internal-sftp
     AllowTcpForwarding no
 """
-        with open('/etc/ssh/sshd_config.test', 'a') as insert:
-            insert.write(subsystem)
-            insert.close()
+        self.appendToFile('/etc/ssh/sshd_config',
+                          subsystem)
+
+    def appendFstab(self):
+        """
+        appends mount info for chroot
+        """
+        self.mkBackup('/etc/fstab')
+        bind = "{0}\t{1}/{2}\tnone\tbind\t0 0\n".format(
+                           self.web_root,
+                           self.home,
+                           self.domain,
+                           )
+        self.appendToFile('/etc/fstab',
+                          bind)
+
+    def appendUmask(self):
+        """
+        appends umask details so that 664 and 775 are default perms
+        """
+
+        pamd = "/etc/pam.d/sshd"
+        self.mkBackup(pamd)
+        session = "session optional pam_umask.so umask=0002"
+        self.appendToFile(pamd,
+                          session)
+    
+    def restartSshd(self):
+        """
+        restarts sshd
+        """
+        self.addField("/etc/init.d/sshd restart")
+
+    def mountFstab(self):
+        """
+        remounts fstab to use new mount points
+        """
+        self.addField("mount -a")
 
     def run(self):
         """
@@ -112,12 +247,68 @@ Match Group sftponly
                 self.createGroup()
             self.createUser()
         else:
+            if self.home is None:
+                self.getHomeDir()
             self.addGroupToUser()
         if not self.checkMatchGroup():
             self.disableDefaultSubsystem()
             self.appendMatchGroup()
+        self.setDirPerms()
+        self.createChrootDir()
+        if not self.checkFstab():
+            self.appendFstab()
+        if not self.checkPam():
+            self.appendUmask()
+        self.restartSshd()
+        self.mountFstab()
 
 
 if __name__ == '__main__':
-    ftp = FTP('testing')
+    from optparse import OptionParser, OptionGroup
+    parser = OptionParser()
+    required = OptionGroup(parser, "REQUIRED")
+    required.add_option('-u', '--username',
+                        help = "FTP Username",
+                        metavar = "USERNAME",
+                        )
+    required.add_option('-d', '--domain',
+                        help = 'Domain to chroot',
+                        metavar = 'DOMAIN',
+                        )
+    required.add_option('-w', '--web-root',
+                        help = 'Domains doc root in VirtualHost',
+                        metavar = '/path/to/domains/web/root',
+                        )
+    #required.add_option('-p', '--passwd',
+    #                    help = "Set users passwd",
+    #                    metavar = "Passwd",
+    #                    )
+    parser.add_option('--home-dir',
+                      help = "Specify users home directory",
+                      metavar = "/path/to/home/dir",
+                      )
+    parser.add_option_group(required)
+    options, args = parser.parse_args()
+    if not options.username:
+        parser.error("Username not specified")
+    if not options.domain:
+        parser.error("Domain not specified")
+    if not options.web_root:
+        parser.error("Domain's web root not specified")
+    #if not options.passwd:
+    #    parser.error("User's passwd not specified")
+
+    if options.home_dir:
+        ftp = FTP(username=options.username,
+                  domain=options.domain,
+                  web_root=options.web_root,
+    #              passwd=options.passwd,
+                  home=options.home_dir,
+                  )
+    else:
+        ftp = FTP(username=options.username,
+                  domain=options.domain,
+                  web_root=options.web_root,
+    #              passwd=options.passwd,
+                  )
     ftp.run()
