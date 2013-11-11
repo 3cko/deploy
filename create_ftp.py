@@ -7,6 +7,7 @@ import fileinput
 import os
 import errno
 import shutil
+import sys
 
 class FTP():
     def __init__(self, username, domain, web_root, passwd=None, home=None):
@@ -16,6 +17,17 @@ class FTP():
         self.passwd = passwd
         self.home = home
         self.array = []
+
+    def checkRoot(self):
+            """
+            check to make sure its ran as root
+            """
+            user = os.geteuid()
+            if user != 0:
+                print "You must be logged in as root or use sudo to run me"
+                sys.exit(0)
+            else:
+                return True
 
     def scanFile(self, file, string, array=None):
         """
@@ -314,4 +326,5 @@ if __name__ == '__main__':
                   web_root=options.web_root,
     #              passwd=options.passwd,
                   )
+    ftp.checkRoot()
     ftp.run()
