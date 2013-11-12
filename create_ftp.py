@@ -9,6 +9,7 @@ import errno
 import shutil
 import sys
 import time
+import crypt
 
 
 class FTP():
@@ -139,26 +140,24 @@ class FTP():
         """
         creates ftp user
         """
+        passwd = self.createPasswd()
         if not self.home:
-            useradd = "useradd -g apache -G sftponly -s /bin/false {0}".format(
+            useradd = "useradd -g apache -G sftponly -s /bin/false -p {0} {1}".format(
+                    passwd,
                     self.username)
         else:
-            useradd = "useradd -g apache -G sftponly -d {0} -s /bin/false {1}".format(
+            useradd = "useradd -g apache -G sftponly -d {0} -s /bin/false -p {1} {2}".format(
                     self.home,
+                    passwd,
                     self.username)
         self.addField(useradd)
-        self.createPasswd()
         self.getHomeDir()
 
     def createPasswd(self):
         """
         Set passwd for user
-        BROKEN
         """
-        passwd = 'echo "{0}" | passwd {1} --stdin'.format(
-                                self.passwd,
-                                self.username)
-        self.addField(passwd)
+        return crypt.crypt(self.passwd, "22")
 
     def createChrootDir(self):
         """
@@ -297,10 +296,10 @@ if __name__ == '__main__':
                         help = 'Domains doc root in VirtualHost',
                         metavar = '/path/to/domains/web/root',
                         )
-    #required.add_option('-p', '--passwd',
-    #                    help = "Set users passwd",
-    #                    metavar = "Passwd",
-    #                    )
+    required.add_option('-p', '--passwd',
+                        help = "Set users passwd",
+                        metavar = "Passwd",
+                        )
     parser.add_option('--home-dir',
                       help = "Specify users home directory",
                       metavar = "/path/to/home/dir",
@@ -313,21 +312,21 @@ if __name__ == '__main__':
         parser.error("Domain not specified")
     if not options.web_root:
         parser.error("Domain's web root not specified")
-    #if not options.passwd:
-    #    parser.error("User's passwd not specified")
+    if not options.passwd:
+        parser.error("User's passwd not specified")
 
     if options.home_dir:
         ftp = FTP(username=options.username,
                   domain=options.domain,
                   web_root=options.web_root,
-    #              passwd=options.passwd,
+                  passwd=options.passwd,
                   home=options.home_dir,
                   )
     else:
         ftp = FTP(username=options.username,
                   domain=options.domain,
                   web_root=options.web_root,
-    #              passwd=options.passwd,
+                  passwd=options.passwd,
                   )
     ftp.checkRoot()
     ftp.run()
