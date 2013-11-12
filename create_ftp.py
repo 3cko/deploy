@@ -20,6 +20,9 @@ class FTP():
         self.passwd = passwd
         self.home = home
         self.array = []
+        self.backups = ['/etc/pam.d/sshd',
+                        '/etc/ssh/sshd_config',
+                        '/etc/fstab']
 
     def checkRoot(self):
             """
@@ -123,12 +126,15 @@ class FTP():
         """
         returns boolean if umask is set for pam.d
         """
-        self.mkBackup('/etc/pam.d/sshd')
         self.scanFile('/etc/pam.d/sshd',
                       "session\s+optional\s+pam_umask.so\s+umask=0002", array=1)
         if len(self.array) > 0:
             return True
         return False
+
+    def createBackups(self):
+        for backup in self.backups:
+            self.mkBackup(backup)
 
     def createGroup(self):
         """
@@ -189,7 +195,6 @@ class FTP():
         """
         disables default Subsystem in /etc/ssh/sshd_config
         """
-        self.mkBackup('/etc/ssh/sshd_config')
         self.scanFile('/etc/ssh/sshd_config',
                       "Subsystem\s+sftp\s+/usr/libexec/openssh/sftp-server", array=1)
         find = self.array[0]
@@ -201,7 +206,6 @@ class FTP():
         """
         appends sftp chrooting info to /etc/ssh/sshd_config 
         """
-        self.mkBackup('/etc/ssh/sshd_config')
         subsystem = """
 Subsystem   sftp    internal-sftp
 
@@ -219,7 +223,6 @@ Match Group sftponly
         """
         appends mount info for chroot
         """
-        self.mkBackup('/etc/fstab')
         bind = "{0}\t{1}/{2}\tnone\tbind\t0 0\n".format(
                            self.web_root,
                            self.home,
@@ -234,7 +237,6 @@ Match Group sftponly
         """
 
         pamd = "/etc/pam.d/sshd"
-        self.mkBackup(pamd)
         session = "session optional pam_umask.so umask=0002"
         self.appendToFile(pamd,
                           session)
@@ -255,6 +257,7 @@ Match Group sftponly
         """
         does all of the magic
         """
+        self.createBackups()
         if not self.checkUser():
             if not self.checkGroup():
                 self.createGroup()
@@ -276,7 +279,6 @@ Match Group sftponly
         self.restartSshd()
         self.mountFstab()
         print "Ensure domains doc root is root:apache and set to 775"
-        print "Create a password for {0} with `passwd {0}`".format(self.username)
         print "If there are any problems, email me at john.martin@rackspace.com"
 
 
