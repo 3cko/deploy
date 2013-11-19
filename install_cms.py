@@ -42,6 +42,14 @@ class InstallCMS():
                     'http://ftp.drupal.org/files/projects/drupal-6.28.tar.gz',
                             }
 
+    def checkRoot(self):
+        user = os.geteuid()
+        if user != 0:
+            print "You need to be logged in as root or use sudo to run me"
+            sys.exit(0)
+        else:
+            return True
+
     def download(self):
         """
         Downloads the correct CMS file
@@ -54,7 +62,7 @@ class InstallCMS():
 
     def extractTar(self):
         """
-        Extract TAR files to destination location
+        Extract TAR files to /tmp location
         """
         tar = tarfile.open('/tmp/{0}'.format(self.file_name))
         tar.extractall('/tmp/')
@@ -62,6 +70,7 @@ class InstallCMS():
 
     def shell(self, command):
         """
+        Execute shell commands
         """
         shells = subprocess.Popen(command,
                                  shell=True,
@@ -73,14 +82,15 @@ class InstallCMS():
 
     def moveCmsToDestination(self):
         """
+        Move the CMS from /tmp/dir to self.destination
         """
         for file in glob.glob('/tmp/{0}/*'.format(self.cms)):
-            print file
             shutil.move(file,
                         self.destination)
 
     def findReplace(self, file, find, replace):
         """
+        Find and replace strings in place for a text file
         """
         for line in fileinput.FileInput(file, inplace=1):
             line = line.replace(find, replace)
@@ -88,6 +98,8 @@ class InstallCMS():
 
     def updateWordpressDBInfo(self):
         """
+        Move wp-config-sample.php to wp-config.php
+        Update database credentials in wp-config.php
         """
         shutil.move("{0}/wp-config-sample.php".format(self.destination),
                     "{0}/wp-config.php".format(self.destination)
@@ -104,6 +116,7 @@ class InstallCMS():
 
     def databaseExecute(self, execute):
         """
+        Strings for database execution with self.shell
         """
         if not self.db_user \
            or not self.db_passwd \
@@ -126,14 +139,19 @@ class InstallCMS():
 
     def createDatabase(self):
         """
+        Create database mysql syntax
         """
-        self.databaseExecute("CREATE DATABASE {0}".format(self.new_dbname))
+        self.databaseExecute("CREATE DATABASE IF NOT EXISTS {0}".format(
+                             self.new_dbname))
 
     def createDatabaseUser(self):
         """
+        Grant database user permission to access new database from localhost \
+or remote location
         """
         self.databaseExecute(
-            "GRANT ALL PRIVILEGES ON {0}.* TO '{1}'@'{2}' IDENTIFIED BY '{3}'".format(
+            "GRANT ALL PRIVILEGES ON {0}.* TO '{1}'@'{2}' \
+IDENTIFIED BY '{3}'".format(
                 self.new_dbname,
                 self.grant_dbuser,
                 self.grant_dbhost,
@@ -144,8 +162,10 @@ class InstallCMS():
         self.download()
         self.extractTar()
         self.moveCmsToDestination()
-        self.createDatabase()
-        self.createDatabaseUser()
+        if self.new_dbname:
+            self.createDatabase()
+        if self.grant_dbuser:
+            self.createDatabaseUser()
         if 'wordpress' in self.cms:
             self.updateWordpressDBInfo()
 
@@ -156,14 +176,14 @@ if __name__ == '__main__':
     req.add_option('-c', '--cms',
                    help="CMS to Install",
                    type='choice',
-                   choices=['wordpress'],
+                   choices=['wordpress', 'drupal-7.23', 'drupal-6.28'],
                    metavar='CMS',
                    )
     req.add_option('-d', '--destination',
                    help="/full/path/to/destination/dir",
                    metavar="/DESTINATION/DIR",
                    )
-    req.add_option('--new_dbname',
+    req.add_option('--new-dbname',
                    help="New Database Name",
                    metavar="DBNAME",
                    )
@@ -185,16 +205,16 @@ specified database",
                       default='localhost',
                       )
     dbinfo = OptionGroup(parser, "REQUIRED IF ~/.my.cnf DOES NOT EXIST")
-    dbinfo.add_option('--db_user',
+    dbinfo.add_option('--db-user',
                       help="Database username to connect to database server",
                       metavar="USERNAME",
                       )
-    dbinfo.add_option('--db_passwd',
+    dbinfo.add_option('--db-passwd',
                       help="Database user's password to connect to database \
 server",
                       metavar="PASSWORD",
                       )
-    dbinfo.add_option('--db_host',
+    dbinfo.add_option('--db-host',
                       help="Database host to connect to database server",
                       metavar="USERNAME",
                       default='localhost',
@@ -212,4 +232,5 @@ needs to be specified")
 
     # turn optparse instance into a dictionary   
     install = InstallCMS(**vars(options))
+    install.checkRoot()
     install.run()
