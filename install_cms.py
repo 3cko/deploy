@@ -158,6 +158,9 @@ IDENTIFIED BY '{3}'".format(
                 self.grant_dbpasswd
                 ))
 
+    def formatPrint(self, comment, details):
+        return "{0}: {1}".format(comment, details)
+
     def run(self):
         self.download()
         self.extractTar()
@@ -234,3 +237,11 @@ needs to be specified")
     install = InstallCMS(**vars(options))
     install.checkRoot()
     install.run()
+    print install.formatPrint("CMS", options.cms)
+    print install.formatPrint("Destination", options.destination)
+    if options.new_dbname:
+        print install.formatPrint("New Database Name", options.new_dbname)
+    if options.grant_dbuser:
+        print install.formatPrint("Granted Database User", options.grant_dbuser)
+    if options.grant_dbhost:
+        print install.formatPrint("Granted Database Host", options.grant_dbhost)
