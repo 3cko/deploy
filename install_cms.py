@@ -93,10 +93,14 @@ class InstallCMS():
                     "{0}/wp-config.php".format(self.destination)
                     )
         file = "{0}/wp-config.php".format(self.destination)
-        self.findReplace(file, 'database_name_here', self.new_dbname)
-        self.findReplace(file, 'username_here', self.grant_dbuser)
-        self.findReplace(file, 'password_here', self.grant_dbpasswd)
-        self.findReplace(file, 'localhost', self.db_host)
+        if self.new_dbname:
+            self.findReplace(file, 'database_name_here', self.new_dbname)
+        if self.grant_dbuser:
+            self.findReplace(file, 'username_here', self.grant_dbuser)
+        if self.grant_dbpasswd:
+            self.findReplace(file, 'password_here', self.grant_dbpasswd)
+        if self.grant_dbhost:
+            self.findReplace(file, 'localhost', str(self.grant_dbhost))
 
     def databaseExecute(self, execute):
         """
@@ -155,17 +159,57 @@ if __name__ == '__main__':
                    choices=['wordpress'],
                    metavar='CMS',
                    )
-    req.add_option('-w', '--web-root',
-                   help="/full/path/to/web/root",
-                   metavar="WEB ROOT",
+    req.add_option('-d', '--destination',
+                   help="/full/path/to/destination/dir",
+                   metavar="/DESTINATION/DIR",
                    )
+    req.add_option('--new_dbname',
+                   help="New Database Name",
+                   metavar="DBNAME",
+                   )
+    grants = OptionGroup(parser, "OPTIONAL: DB CRED FOR GRANTING DB USER \
+ACCESS TO NEW DB")
+    grants.add_option('--grant-dbuser',
+                      help="Database User grant access to the specified \
+database",
+                      metavar="USERNAME",
+                      )
+    grants.add_option('--grant-dbpasswd',
+                      help="Database User password for 'identify by' to the \
+specified database",
+                      metavar="PASSWORD",
+                      )
+    grants.add_option('--grant-dbhost',
+                      help="Database User host location for access remotely",
+                      metavar="USERNAME",
+                      default='localhost',
+                      )
+    dbinfo = OptionGroup(parser, "REQUIRED IF ~/.my.cnf DOES NOT EXIST")
+    dbinfo.add_option('--db_user',
+                      help="Database username to connect to database server",
+                      metavar="USERNAME",
+                      )
+    dbinfo.add_option('--db_passwd',
+                      help="Database user's password to connect to database \
+server",
+                      metavar="PASSWORD",
+                      )
+    dbinfo.add_option('--db_host',
+                      help="Database host to connect to database server",
+                      metavar="USERNAME",
+                      default='localhost',
+                      )
     parser.add_option_group(req)
+    parser.add_option_group(grants)
+    parser.add_option_group(dbinfo)
+    options, args = parser.parse_args()
 
+    if not options.cms:
+        parser.error("A CMS has to be specified")
+    if not options.destination:
+        parser.error("Destination path for where WordPress is to be added \
+needs to be specified")
 
-    install = InstallCMS('wordpress', '/var/www/vhosts/testing', 'foobar3',
-                         grant_dbuser='foo2',
-                         grant_dbpasswd='rawr',
-                         grant_dbhost='localhost')
+    # turn optparse instance into a dictionary   
+    install = InstallCMS(**vars(options))
     install.run()
-    #install.createDatabase()
-    #install.createDatabaseUser()
