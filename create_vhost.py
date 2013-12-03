@@ -68,7 +68,10 @@ class VHost():
         """
         update domains doc root and create if doesnt exist 
         """
-        path = "{0}/{1}".format(self.document_root, self.domain)
+        if self.document_root != '/var/www/vhosts':
+            path = "{0}".format(self.document_root)
+        else:
+            path = "{0}/{1}".format(self.document_root, self.domain)
         self.validateDir(path)
         self.updateTemplate(self.file, '/path/to/doc/root', self.document_root)
 
