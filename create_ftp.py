@@ -53,12 +53,12 @@ class FTP():
     def addField(self, string):
         """
         main function for creating for executing shell commands
-        accepts string only format, eg: 
+        accepts string only format, eg:
         'useradd -G sftponly -s /bin/false username'
         """
         add = subprocess.Popen(string.split(),
-                               stdout = subprocess.PIPE,
-                              )
+                               stdout=subprocess.PIPE,
+                               )
         output, error = add.communicate()
 
     def appendToFile(self, file, append):
@@ -111,13 +111,14 @@ class FTP():
         BROKEN
         """
         bind = "{0}\s+{1}/{2}\s+none\s+bind\s+0\s+0".format(
-                           self.web_root,
-                           self.home,
-                           self.domain,
-                           )
+            self.web_root,
+            self.home,
+            self.domain,
+            )
         self.scanFile('/etc/fstab',
-                       bind,
-                       array=1)
+                      bind,
+                      array=1
+                      )
         if len(self.array) > 0:
             return True
         return False
@@ -127,7 +128,9 @@ class FTP():
         returns boolean if umask is set for pam.d
         """
         self.scanFile('/etc/pam.d/sshd',
-                      "session\s+optional\s+pam_umask.so\s+umask=0002", array=1)
+                      "session\s+optional\s+pam_umask.so\s+umask=0002",
+                      array=1
+                      )
         if len(self.array) > 0:
             return True
         return False
@@ -148,14 +151,16 @@ class FTP():
         """
         passwd = self.createPasswd()
         if not self.home:
-            useradd = "useradd -g apache -G sftponly -s /bin/false -p {0} {1}".format(
-                    passwd,
-                    self.username)
+            useradd = "useradd -g apache -G sftponly -s /bin/false\
+-p {0} {1}".format(passwd,
+                   self.username
+                   )
         else:
-            useradd = "useradd -g apache -G sftponly -d {0} -s /bin/false -p {1} {2}".format(
-                    self.home,
-                    passwd,
-                    self.username)
+            useradd = "useradd -g apache -G sftponly -d {0} -s /bin/false\
+-p {1} {2}".format(self.home,
+                   passwd,
+                   self.username
+                   )
         self.addField(useradd)
         self.getHomeDir()
 
@@ -169,9 +174,9 @@ class FTP():
         """
         create domains dir in users home dir
         """
-        chroot = "{0}/{1}".format(
-                self.home,
-                self.domain)
+        chroot = "{0}/{1}".format(self.home,
+                                  self.domain
+                                  )
         try:
             os.makedirs(chroot)
         except OSError as exception:
@@ -189,14 +194,18 @@ class FTP():
         """
         adds user to group, sftponly
         """
-        self.addField("usermod -g apache -G sftponly {0}".format(self.username))
+        self.addField("usermod -g apache -G sftponly {0}".format(
+            self.username)
+            )
 
     def disableDefaultSubsystem(self):
         """
         disables default Subsystem in /etc/ssh/sshd_config
         """
         self.scanFile('/etc/ssh/sshd_config',
-                      "Subsystem\s+sftp\s+/usr/libexec/openssh/sftp-server", array=1)
+                      "Subsystem\s+sftp\s+/usr/libexec/openssh/sftp-server",
+                      array=1
+                      )
         find = self.array[0]
         for line in fileinput.FileInput('/etc/ssh/sshd_config', inplace=1):
             line = line.replace(find, "#{0}".format(find))
@@ -204,7 +213,7 @@ class FTP():
 
     def appendMatchGroup(self):
         """
-        appends sftp chrooting info to /etc/ssh/sshd_config 
+        appends sftp chrooting info to /etc/ssh/sshd_config
         """
         subsystem = """
 Subsystem   sftp    internal-sftp
@@ -223,11 +232,10 @@ Match Group sftponly
         """
         appends mount info for chroot
         """
-        bind = "{0}\t{1}/{2}\tnone\tbind\t0 0\n".format(
-                           self.web_root,
-                           self.home,
-                           self.domain,
-                           )
+        bind = "{0}\t{1}/{2}\tnone\tbind\t0 0\n".format(self.web_root,
+                                                        self.home,
+                                                        self.domain,
+                                                        )
         self.appendToFile('/etc/fstab',
                           bind)
 
@@ -239,8 +247,9 @@ Match Group sftponly
         pamd = "/etc/pam.d/sshd"
         session = "session optional pam_umask.so umask=0002"
         self.appendToFile(pamd,
-                          session)
-    
+                          session
+                          )
+
     def restartSshd(self):
         """
         restarts sshd
@@ -279,7 +288,8 @@ Match Group sftponly
         self.restartSshd()
         self.mountFstab()
         print "Ensure domains doc root is root:apache and set to 775"
-        print "If there are any problems, email me at john.martin@rackspace.com"
+        print "If there are any problems, email me at\
+john.martin@rackspace.com"
 
 
 if __name__ == '__main__':
@@ -287,24 +297,24 @@ if __name__ == '__main__':
     parser = OptionParser()
     required = OptionGroup(parser, "REQUIRED")
     required.add_option('-u', '--username',
-                        help = "FTP Username",
-                        metavar = "USERNAME",
+                        help="FTP Username",
+                        metavar="USERNAME",
                         )
     required.add_option('-d', '--domain',
-                        help = 'Domain to chroot',
-                        metavar = 'DOMAIN',
+                        help='Domain to chroot',
+                        metavar='DOMAIN',
                         )
     required.add_option('-w', '--web-root',
-                        help = 'Domains doc root in VirtualHost',
-                        metavar = '/path/to/domains/web/root',
+                        help='Domains doc root in VirtualHost',
+                        metavar='/path/to/domains/web/root',
                         )
     required.add_option('-p', '--passwd',
-                        help = "Set users passwd",
-                        metavar = "Passwd",
+                        help="Set users passwd",
+                        metavar="Passwd",
                         )
     parser.add_option('--home-dir',
-                      help = "Specify users home directory",
-                      metavar = "/path/to/home/dir",
+                      help="Specify users home directory",
+                      metavar="/path/to/home/dir",
                       )
     parser.add_option_group(required)
     options, args = parser.parse_args()
