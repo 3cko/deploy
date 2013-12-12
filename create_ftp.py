@@ -151,12 +151,12 @@ class FTP():
         """
         passwd = self.createPasswd()
         if not self.home:
-            useradd = "useradd -g apache -G sftponly -s /bin/false\
+            useradd = "useradd -g apache -G sftponly -s /bin/false \
 -p {0} {1}".format(passwd,
                    self.username
                    )
         else:
-            useradd = "useradd -g apache -G sftponly -d {0} -s /bin/false\
+            useradd = "useradd -g apache -G sftponly -d {0} -s /bin/false \
 -p {1} {2}".format(self.home,
                    passwd,
                    self.username
@@ -288,7 +288,7 @@ Match Group sftponly
         self.restartSshd()
         self.mountFstab()
         print "Ensure domains doc root is root:apache and set to 775"
-        print "If there are any problems, email me at\
+        print "If there are any problems, email me at \
 john.martin@rackspace.com"
 
 
