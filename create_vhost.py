@@ -1,9 +1,5 @@
 #!/usr/bin/env python
 
-# Create new vhost conf for any distro
-# detect web service
-# add gzip
-
 #modules
 import urllib
 import fileinput
@@ -73,7 +69,7 @@ class VHost():
         else:
             path = "{0}/{1}".format(self.document_root, self.domain)
         self.validateDir(path)
-        self.updateTemplate(self.file, '/path/to/doc/root', self.document_root)
+        self.updateTemplate(self.file, '/path/to/doc/root/{0}'.format(self.domain), path)
 
     def updateVhostWithDomain(self):
         """
